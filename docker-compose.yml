@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+
+  # Banco de dados do EstoqueService
+  estoque-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: estoque
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"   # porta 5433 no host para não conflitar com Postgres local
+
+  # Microsserviço de Estoque
+  estoque-service:
+    build: ./backend/EstoqueService
+    ports:
+      - "5001:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=estoque-db;Port=5432;Database=estoque;Username=postgres;Password=postgres
+    depends_on:
+      - estoque-db
+
+  # Banco de dados do FaturamentoService
+  faturamento-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: faturamento
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+
+  # Microsserviço de Faturamento
+  faturamento-service:
+    build: ./backend/FaturamentoService
+    ports:
+      - "5002:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=faturamento-db;Port=5432;Database=faturamento;Username=postgres;Password=postgres
+      - EstoqueServiceUrl=http://estoque-service:8080/
+    depends_on:
+      - faturamento-db
+      - estoque-service
