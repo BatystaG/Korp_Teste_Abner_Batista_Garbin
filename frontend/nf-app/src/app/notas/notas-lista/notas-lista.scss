@@ -1,0 +1,30 @@
+.pagina {
+  padding: 24px;
+}
+
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.vazio {
+  text-align: center;
+  color: #888;
+  padding: 32px;
+}
+
+mat-table {
+  width: 100%;
+}

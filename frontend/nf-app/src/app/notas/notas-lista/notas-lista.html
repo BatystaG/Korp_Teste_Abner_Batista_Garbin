@@ -1,0 +1,77 @@
+<div class="pagina">
+  <div class="cabecalho">
+    <h1>Notas Fiscais</h1>
+    <button mat-raised-button color="primary" (click)="abrirFormulario()">
+      <mat-icon>add</mat-icon> Nova Nota
+    </button>
+  </div>
+
+  <div *ngIf="carregando" class="spinner-container">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <mat-table [dataSource]="notas" *ngIf="!carregando">
+
+    <ng-container matColumnDef="numero">
+      <mat-header-cell *matHeaderCellDef>Número</mat-header-cell>
+      <mat-cell *matCellDef="let n">{{ n.numero }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="dataEmissao">
+      <mat-header-cell *matHeaderCellDef>Data</mat-header-cell>
+      <mat-cell *matCellDef="let n">{{ n.dataEmissao | date:'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+      <mat-cell *matCellDef="let n">
+        <mat-chip [color]="n.status === 'Impressa' ? 'warn' : 'primary'" highlighted>
+          {{ n.status }}
+        </mat-chip>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="itens">
+      <mat-header-cell *matHeaderCellDef>Itens</mat-header-cell>
+      <mat-cell *matCellDef="let n">{{ n.itens?.length ?? 0 }} produto(s)</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acoes">
+      <mat-header-cell *matHeaderCellDef>Ações</mat-header-cell>
+      <mat-cell *matCellDef="let n">
+
+        <!-- Botão imprimir: mostra spinner enquanto processa -->
+        <button mat-icon-button color="accent"
+          [disabled]="n.status !== 'Rascunho' || imprimindo === n.id"
+          (click)="imprimir(n)"
+          title="Imprimir">
+          <mat-spinner *ngIf="imprimindo === n.id" diameter="20"></mat-spinner>
+          <mat-icon *ngIf="imprimindo !== n.id">print</mat-icon>
+        </button>
+
+        <button mat-icon-button color="primary"
+          [disabled]="n.status === 'Impressa'"
+          (click)="abrirFormulario(n)"
+          title="Editar">
+          <mat-icon>edit</mat-icon>
+        </button>
+
+        <button mat-icon-button color="warn"
+          [disabled]="n.status === 'Impressa'"
+          (click)="excluir(n)"
+          title="Excluir">
+          <mat-icon>delete</mat-icon>
+        </button>
+
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="colunas"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: colunas;"></mat-row>
+
+  </mat-table>
+
+  <p *ngIf="!carregando && notas.length === 0" class="vazio">
+    Nenhuma nota fiscal cadastrada.
+  </p>
+</div>
