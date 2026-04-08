@@ -43,3 +43,12 @@ services:
     depends_on:
       - faturamento-db
       - estoque-service
+
+  # Frontend Angular servido pelo Nginx
+  frontend:
+    build: ./frontend/nf-app
+    ports:
+      - "4200:80"
+    depends_on:
+      - estoque-service
+      - faturamento-service

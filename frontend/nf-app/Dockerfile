@@ -1,0 +1,18 @@
+# Estágio 1: build
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . ./
+RUN npm run build
+
+# Estágio 2: servidor Nginx para servir o build
+FROM nginx:alpine
+COPY --from=build /app/dist/nf-app/browser /usr/share/nginx/html
+
+# Configuração para SPA: redireciona todas as rotas para index.html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
