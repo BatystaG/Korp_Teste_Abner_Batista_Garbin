@@ -1,0 +1,130 @@
+import { Component, OnInit, Inject } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CommonModule } from '@angular/common';
+import { NotaFiscalService, NotaFiscal } from '../../services/nota-fiscal.service';
+import { ProdutoService, Produto } from '../../services/produto.service';
+
+@Component({
+  selector: 'app-notas-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatIconModule,
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+  ],
+  templateUrl: './notas-form.html',
+  styleUrl: './notas-form.scss'
+})
+export class NotasFormComponent implements OnInit {
+  form!: FormGroup;
+  salvando = false;
+  editando = false;
+  produtos: Produto[] = [];
+
+  constructor(
+    private fb: FormBuilder,
+    private notaService: NotaFiscalService,
+    private produtoService: ProdutoService,
+    private snackBar: MatSnackBar,
+    private dialogRef: MatDialogRef<NotasFormComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: NotaFiscal | null
+  ) {}
+
+  ngOnInit(): void {
+    this.editando = !!this.data;
+
+    this.form = this.fb.group({
+      numero: [this.data?.numero ?? '', Validators.required],
+      itens: this.fb.array([])
+    });
+
+    // Carrega lista de produtos disponíveis para o select
+    this.produtoService.listar().subscribe({
+      next: lista => {
+        this.produtos = lista;
+        // Se estiver editando, popula os itens existentes
+        if (this.editando && this.data?.itens) {
+          this.data.itens.forEach(item => this.adicionarItem(item.produtoId, item.quantidade, item.precoUnitario));
+        } else {
+          this.adicionarItem(); // começa com uma linha em branco
+        }
+      },
+      error: err => this.snackBar.open(err.message, 'Fechar', { duration: 4000 })
+    });
+  }
+
+  // FormArray: lista dinâmica de itens — cada item é um FormGroup
+  get itens(): FormArray {
+    return this.form.get('itens') as FormArray;
+  }
+
+  adicionarItem(produtoId: number = 0, quantidade: number = 1, precoUnitario: number = 0): void {
+    this.itens.push(this.fb.group({
+      produtoId:     [produtoId,     Validators.required],
+      quantidade:    [quantidade,    [Validators.required, Validators.min(1)]],
+      precoUnitario: [precoUnitario, [Validators.required, Validators.min(0)]]
+    }));
+  }
+
+  removerItem(index: number): void {
+    this.itens.removeAt(index);
+  }
+
+  // Retorna a descrição do produto selecionado para salvar junto ao item
+  descricaoProduto(produtoId: number): string {
+    return this.produtos.find(p => p.id === produtoId)?.descricao ?? '';
+  }
+
+  salvar(): void {
+    if (this.form.invalid) return;
+    this.salvando = true;
+
+    const nota: NotaFiscal = {
+      ...this.data,
+      numero: this.form.value.numero,
+      status: 'Rascunho',
+      itens: this.form.value.itens.map((item: any) => ({
+        ...item,
+        produtoDescricao: this.descricaoProduto(item.produtoId)
+      }))
+    };
+
+    const operacao = this.editando
+      ? this.notaService.atualizar(this.data!.id!, nota)
+      : this.notaService.criar(nota);
+
+    operacao.subscribe({
+      next: () => {
+        this.snackBar.open(
+          this.editando ? 'Nota atualizada.' : 'Nota criada.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.dialogRef.close(true);
+      },
+      error: err => {
+        this.snackBar.open(err.message, 'Fechar', { duration: 4000 });
+        this.salvando = false;
+      }
+    });
+  }
+
+  cancelar(): void {
+    this.dialogRef.close(false);
+  }
+}

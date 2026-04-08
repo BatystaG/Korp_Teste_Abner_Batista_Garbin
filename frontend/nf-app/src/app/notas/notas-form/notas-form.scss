@@ -1,0 +1,33 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  min-width: 580px;
+}
+
+.campo-numero {
+  width: 200px;
+}
+
+.linha-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.campo-produto {
+  flex: 2;
+}
+
+.campo-qtd {
+  flex: 0 0 80px;
+}
+
+.campo-preco {
+  flex: 0 0 120px;
+}
+
+h3 {
+  margin: 8px 0 4px;
+}

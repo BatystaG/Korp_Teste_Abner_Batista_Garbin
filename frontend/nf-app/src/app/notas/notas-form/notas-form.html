@@ -1,0 +1,64 @@
+<h2 mat-dialog-title>{{ editando ? 'Editar Nota Fiscal' : 'Nova Nota Fiscal' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+
+    <mat-form-field appearance="outline" class="campo-numero">
+      <mat-label>Número</mat-label>
+      <input matInput formControlName="numero" />
+      <mat-error *ngIf="form.get('numero')?.hasError('required')">
+        Número é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <h3>Produtos</h3>
+
+    <div formArrayName="itens">
+      <div *ngFor="let item of itens.controls; let i = index"
+           [formGroupName]="i"
+           class="linha-item">
+
+        <mat-form-field appearance="outline" class="campo-produto">
+          <mat-label>Produto</mat-label>
+          <mat-select formControlName="produtoId">
+            <mat-option *ngFor="let p of produtos" [value]="p.id">
+              {{ p.codigo }} — {{ p.descricao }} (saldo: {{ p.saldo }})
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="item.get('produtoId')?.hasError('required')">
+            Selecione um produto.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="campo-qtd">
+          <mat-label>Qtd</mat-label>
+          <input matInput type="number" formControlName="quantidade" />
+          <mat-error *ngIf="item.get('quantidade')?.hasError('min')">Mín. 1</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="campo-preco">
+          <mat-label>Preço Unit.</mat-label>
+          <input matInput type="number" formControlName="precoUnitario" />
+        </mat-form-field>
+
+        <button mat-icon-button color="warn" (click)="removerItem(i)" title="Remover item">
+          <mat-icon>remove_circle</mat-icon>
+        </button>
+
+      </div>
+    </div>
+
+    <button mat-stroked-button color="primary" type="button" (click)="adicionarItem()">
+      <mat-icon>add</mat-icon> Adicionar Produto
+    </button>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()" [disabled]="salvando">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="salvar()" [disabled]="salvando">
+    <mat-spinner *ngIf="salvando" diameter="20"></mat-spinner>
+    <span *ngIf="!salvando">Salvar</span>
+  </button>
+</mat-dialog-actions>
