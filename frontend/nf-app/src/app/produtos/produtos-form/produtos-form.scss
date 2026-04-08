@@ -1,0 +1,11 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  min-width: 380px;
+}
+
+mat-spinner {
+  display: inline-block;
+}

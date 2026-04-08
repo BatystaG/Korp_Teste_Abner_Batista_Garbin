@@ -1,0 +1,42 @@
+<h2 mat-dialog-title>{{ editando ? 'Editar Produto' : 'Novo Produto' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+
+    <mat-form-field appearance="outline">
+      <mat-label>Código</mat-label>
+      <input matInput formControlName="codigo" />
+      <mat-error *ngIf="form.get('codigo')?.hasError('required')">
+        Código é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="descricao" />
+      <mat-error *ngIf="form.get('descricao')?.hasError('required')">
+        Descrição é obrigatória.
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Saldo</mat-label>
+      <input matInput type="number" formControlName="saldo" />
+      <mat-error *ngIf="form.get('saldo')?.hasError('required')">
+        Saldo é obrigatório.
+      </mat-error>
+      <mat-error *ngIf="form.get('saldo')?.hasError('min')">
+        Saldo não pode ser negativo.
+      </mat-error>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()" [disabled]="salvando">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="salvar()" [disabled]="salvando">
+    <mat-spinner *ngIf="salvando" diameter="20"></mat-spinner>
+    <span *ngIf="!salvando">Salvar</span>
+  </button>
+</mat-dialog-actions>
