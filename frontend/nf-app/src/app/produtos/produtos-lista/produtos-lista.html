@@ -1,0 +1,50 @@
+<div class="pagina">
+  <div class="cabecalho">
+    <h1>Produtos</h1>
+    <button mat-raised-button color="primary" (click)="abrirFormulario()">
+      <mat-icon>add</mat-icon> Novo Produto
+    </button>
+  </div>
+
+  <div *ngIf="carregando" class="spinner-container">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <mat-table [dataSource]="produtos" *ngIf="!carregando">
+
+    <ng-container matColumnDef="codigo">
+      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.codigo }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="descricao">
+      <mat-header-cell *matHeaderCellDef>Descrição</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.descricao }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="saldo">
+      <mat-header-cell *matHeaderCellDef>Saldo</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.saldo }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acoes">
+      <mat-header-cell *matHeaderCellDef>Ações</mat-header-cell>
+      <mat-cell *matCellDef="let p">
+        <button mat-icon-button color="primary" (click)="abrirFormulario(p)" title="Editar">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="excluir(p)" title="Excluir">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="colunas"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: colunas;"></mat-row>
+
+  </mat-table>
+
+  <p *ngIf="!carregando && produtos.length === 0" class="vazio">
+    Nenhum produto cadastrado.
+  </p>
+</div>
