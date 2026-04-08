@@ -1,5 +1,6 @@
 import { Component, OnInit, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Observable } from 'rxjs';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
@@ -55,9 +56,9 @@ export class ProdutosFormComponent implements OnInit {
 
     const produto: Produto = { ...this.data, ...this.form.value };
 
-    const operacao = this.editando
+    const operacao = (this.editando
       ? this.produtoService.atualizar(this.data!.id!, produto)
-      : this.produtoService.criar(produto);
+      : this.produtoService.criar(produto)) as Observable<unknown>;
 
     operacao.subscribe({
       next: () => {
@@ -68,7 +69,7 @@ export class ProdutosFormComponent implements OnInit {
         );
         this.dialogRef.close(true);
       },
-      error: err => {
+      error: (err: Error) => {
         this.snackBar.open(err.message, 'Fechar', { duration: 4000 });
         this.salvando = false;
       }
