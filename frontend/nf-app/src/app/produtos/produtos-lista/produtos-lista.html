@@ -10,7 +10,8 @@
     <mat-spinner diameter="48"></mat-spinner>
   </div>
 
-  <mat-table [dataSource]="produtos" *ngIf="!carregando">
+  <div class="table-container">
+    <mat-table [dataSource]="produtos" *ngIf="!carregando">
 
     <ng-container matColumnDef="codigo">
       <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
@@ -42,7 +43,8 @@
     <mat-header-row *matHeaderRowDef="colunas"></mat-header-row>
     <mat-row *matRowDef="let row; columns: colunas;"></mat-row>
 
-  </mat-table>
+    </mat-table>
+  </div>
 
   <p *ngIf="!carregando && produtos.length === 0" class="vazio">
     Nenhum produto cadastrado.

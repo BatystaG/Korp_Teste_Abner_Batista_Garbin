@@ -1,9 +1,10 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   padding-top: 8px;
-  min-width: 580px;
+  width: 100%;
+  min-width: 0;
 }
 
 .campo-numero {
@@ -12,22 +13,40 @@
 
 .linha-item {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
 }
 
 .campo-produto {
-  flex: 2;
+  flex: 2 1 240px;
+  min-width: 240px;
 }
 
-.campo-qtd {
-  flex: 0 0 80px;
-}
-
+.campo-qtd,
 .campo-preco {
-  flex: 0 0 120px;
+  flex: 1 1 120px;
+  min-width: 120px;
+}
+
+.linha-item button {
+  align-self: flex-end;
 }
 
 h3 {
   margin: 8px 0 4px;
+}
+
+@media (max-width: 760px) {
+  .linha-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .campo-produto,
+  .campo-qtd,
+  .campo-preco {
+    flex: 1 1 100%;
+    min-width: auto;
+  }
 }
