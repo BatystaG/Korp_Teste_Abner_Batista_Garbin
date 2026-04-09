@@ -80,4 +80,17 @@ public class ProdutosController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(produto);
     }
+
+    // PATCH /api/produtos/5/creditar?quantidade=10
+    // Chamado pelo FaturamentoService para compensar débito em caso de falha
+    [HttpPatch("{id}/creditar")]
+    public async Task<IActionResult> Creditar(int id, [FromQuery] int quantidade)
+    {
+        var produto = await _db.Produtos.FindAsync(id);
+        if (produto is null) return NotFound();
+
+        produto.Saldo += quantidade;
+        await _db.SaveChangesAsync();
+        return Ok(produto);
+    }
 }

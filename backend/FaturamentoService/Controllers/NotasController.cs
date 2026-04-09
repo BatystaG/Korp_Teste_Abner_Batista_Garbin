@@ -102,22 +102,51 @@ public class NotasController : ControllerBase
         if (nota.Status == "Impressa")
             return BadRequest(new { erro = "Nota já foi impressa." });
 
-        // Chama EstoqueService para debitar cada item
-        foreach (var item in nota.Itens)
+        // Lista para rastrear débitos bem-sucedidos para compensação em caso de falha
+        var debitosSucessos = new List<(int ProdutoId, int Quantidade)>();
+
+        try
         {
-            var response = await _httpClient.PatchAsync(
-                $"api/produtos/{item.ProdutoId}/debitar?quantidade={item.Quantidade}",
-                null);
-
-            if (!response.IsSuccessStatusCode)
+            // Chama EstoqueService para debitar cada item
+            foreach (var item in nota.Itens)
             {
-                var erro = await response.Content.ReadAsStringAsync();
-                return BadRequest(new { erro = $"Falha ao debitar produto {item.ProdutoId}: {erro}" });
-            }
-        }
+                var response = await _httpClient.PatchAsync(
+                    $"api/produtos/{item.ProdutoId}/debitar?quantidade={item.Quantidade}",
+                    null);
 
-        nota.Status = "Impressa";
-        await _db.SaveChangesAsync();
-        return Ok(nota);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var erro = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Falha ao debitar produto {item.ProdutoId}: {erro}");
+                }
+
+                // Adiciona à lista de débitos bem-sucedidos
+                debitosSucessos.Add((item.ProdutoId, item.Quantidade));
+            }
+
+            // Se todos os débitos foram bem-sucedidos, marca a nota como impressa
+            nota.Status = "Impressa";
+            await _db.SaveChangesAsync();
+            return Ok(nota);
+        }
+        catch (Exception ex)
+        {
+            // Em caso de falha, compensa os débitos bem-sucedidos
+            foreach (var (produtoId, quantidade) in debitosSucessos)
+            {
+                try
+                {
+                    await _httpClient.PatchAsync(
+                        $"api/produtos/{produtoId}/creditar?quantidade={quantidade}",
+                        null);
+                }
+                catch
+                {
+                    // Log de erro de compensação, mas continua tentando os outros
+                }
+            }
+
+            return BadRequest(new { erro = ex.Message });
+        }
     }
 }
