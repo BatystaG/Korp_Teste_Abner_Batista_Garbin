@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   # Banco de dados do EstoqueService
@@ -11,6 +9,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"   # porta 5433 no host para não conflitar com Postgres local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d estoque"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Microsserviço de Estoque
   estoque-service:
@@ -20,7 +23,8 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=Host=estoque-db;Port=5432;Database=estoque;Username=postgres;Password=postgres
     depends_on:
-      - estoque-db
+      estoque-db:
+        condition: service_healthy
 
   # Banco de dados do FaturamentoService
   faturamento-db:
@@ -31,6 +35,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d faturamento"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Microsserviço de Faturamento
   faturamento-service:
@@ -41,8 +50,10 @@ services:
       - ConnectionStrings__DefaultConnection=Host=faturamento-db;Port=5432;Database=faturamento;Username=postgres;Password=postgres
       - EstoqueServiceUrl=http://estoque-service:8080/
     depends_on:
-      - faturamento-db
-      - estoque-service
+      faturamento-db:
+        condition: service_healthy
+      estoque-service:
+        condition: service_started
 
   # Frontend Angular servido pelo Nginx
   frontend:
