@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatTableModule } from '@angular/material/table';
@@ -39,11 +39,12 @@ export class NotasListaComponent implements OnInit, OnDestroy {
   constructor(
     private notaService: NotaFiscalService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.carregar();
+    setTimeout(() => this.carregar());
   }
 
   carregar(): void {
@@ -54,10 +55,12 @@ export class NotasListaComponent implements OnInit, OnDestroy {
         next: dados => {
           this.notas = dados;
           this.carregando = false;
+          this.cdr.detectChanges();
         },
         error: err => {
           this.snackBar.open(err.message, 'Fechar', { duration: 4000 });
           this.carregando = false;
+          this.cdr.detectChanges();
         }
       });
   }

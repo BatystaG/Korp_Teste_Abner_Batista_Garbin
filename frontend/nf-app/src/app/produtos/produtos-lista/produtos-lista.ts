@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatTableModule } from '@angular/material/table';
@@ -38,13 +38,16 @@ export class ProdutosListaComponent implements OnInit, OnDestroy {
   constructor(
     private produtoService: ProdutoService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef
   ) {}
 
   // ngOnInit: busca os produtos assim que o componente é criado
   // Equivalente ao created() do Vue
   ngOnInit(): void {
-    this.carregar();
+    // Aguarda a rota estabilizar antes de carregar para evitar que o takeUntil
+    // cancele a requisição durante o redirect '' → 'produtos'
+    setTimeout(() => this.carregar());
   }
 
   carregar(): void {
@@ -55,10 +58,12 @@ export class ProdutosListaComponent implements OnInit, OnDestroy {
         next: dados => {
           this.produtos = dados;
           this.carregando = false;
+          this.cdr.detectChanges();
         },
         error: err => {
           this.snackBar.open(err.message, 'Fechar', { duration: 4000 });
           this.carregando = false;
+          this.cdr.detectChanges();
         }
       });
   }
