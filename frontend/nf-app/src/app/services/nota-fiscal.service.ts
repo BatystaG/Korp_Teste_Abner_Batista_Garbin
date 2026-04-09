@@ -26,49 +26,59 @@ export class NotaFiscalService {
 
   constructor(private http: HttpClient) {}
 
+  private extrairMensagemErro(err: any, fallback: string): string {
+    if (err?.error) {
+      if (typeof err.error === 'string') {
+        try {
+          const parsed = JSON.parse(err.error);
+          return this.extrairMensagemErro({ error: parsed }, fallback);
+        } catch {
+          return err.error;
+        }
+      }
+
+      if (typeof err.error === 'object') {
+        return err.error.erro ?? err.error.detail ?? err.error.title ?? err.error.message ?? fallback;
+      }
+    }
+
+    return err?.message ?? fallback;
+  }
+
   listar(): Observable<NotaFiscal[]> {
     return this.http.get<NotaFiscal[]>(this.url).pipe(
-      catchError(err => throwError(() => new Error('Serviço de faturamento indisponível.')))
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Serviço de faturamento indisponível.'))))
     );
   }
 
   buscarPorId(id: number): Observable<NotaFiscal> {
     return this.http.get<NotaFiscal>(`${this.url}/${id}`).pipe(
-      catchError(err => throwError(() => new Error('Nota fiscal não encontrada.')))
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Nota fiscal não encontrada.'))))
     );
   }
 
   criar(nota: NotaFiscal): Observable<NotaFiscal> {
     return this.http.post<NotaFiscal>(this.url, nota).pipe(
-      catchError(err => {
-        const msg = err.error?.erro ?? err.error?.title ?? err.message ?? 'Erro ao criar nota fiscal.';
-        return throwError(() => new Error(msg));
-      })
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Erro ao criar nota fiscal.'))))
     );
   }
 
   atualizar(id: number, nota: NotaFiscal): Observable<void> {
     return this.http.put<void>(`${this.url}/${id}`, nota).pipe(
-      catchError(err => {
-        const msg = err.error?.erro ?? err.error?.title ?? err.message ?? 'Erro ao atualizar nota fiscal.';
-        return throwError(() => new Error(msg));
-      })
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Erro ao atualizar nota fiscal.'))))
     );
   }
 
   excluir(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`).pipe(
-      catchError(err => throwError(() => new Error('Erro ao excluir nota fiscal.')))
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Erro ao excluir nota fiscal.'))))
     );
   }
 
   // Chama o endpoint que debita o estoque e marca a nota como Impressa
   imprimir(id: number): Observable<NotaFiscal> {
     return this.http.post<NotaFiscal>(`${this.url}/${id}/imprimir`, {}).pipe(
-      catchError(err => {
-        const msg = err.error?.erro ?? 'Erro ao imprimir nota fiscal.';
-        return throwError(() => new Error(msg));
-      })
+      catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Erro ao imprimir nota fiscal.'))))
     );
   }
 }

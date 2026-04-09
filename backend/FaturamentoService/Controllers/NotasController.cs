@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FaturamentoService.Data;
@@ -116,8 +118,30 @@ public class NotasController : ControllerBase
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var erro = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Falha ao debitar produto {item.ProdutoId}: {erro}");
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    var detalhe = errorContent;
+
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(errorContent);
+                        var root = doc.RootElement;
+
+                        if (root.TryGetProperty("erro", out var erroProp) && erroProp.ValueKind == JsonValueKind.String)
+                            detalhe = erroProp.GetString() ?? detalhe;
+                        else if (root.TryGetProperty("detail", out var detailProp) && detailProp.ValueKind == JsonValueKind.String)
+                            detalhe = detailProp.GetString() ?? detalhe;
+                        else if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == JsonValueKind.String)
+                            detalhe = titleProp.GetString() ?? detalhe;
+                    }
+                    catch
+                    {
+                        // Não faz nada, mantém o conteúdo original
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.NotFound)
+                        detalhe = $"Produto {item.ProdutoId} não encontrado.";
+
+                    throw new Exception($"Falha ao debitar produto {item.ProdutoId}: {detalhe}");
                 }
 
                 // Adiciona à lista de débitos bem-sucedidos

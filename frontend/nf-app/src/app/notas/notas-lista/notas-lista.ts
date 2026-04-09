@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -82,16 +82,20 @@ export class NotasListaComponent implements OnInit, OnDestroy {
     }
     this.imprimindo = nota.id!;
     this.notaService.imprimir(nota.id!)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.imprimindo = null;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
         next: () => {
           this.snackBar.open('Nota impressa com sucesso!', 'Fechar', { duration: 3000 });
-          this.imprimindo = null;
           this.carregar();
         },
         error: err => {
           this.snackBar.open(err.message, 'Fechar', { duration: 4000 });
-          this.imprimindo = null;
         }
       });
   }
