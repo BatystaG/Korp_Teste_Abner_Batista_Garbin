@@ -6,7 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<FaturamentoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Evita erro de referência circular ao serializar NotaFiscal → Itens → NotaFiscal
+    options.JsonSerializerOptions.ReferenceHandler =
+        System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
 
 builder.Services.AddCors(options =>
 {

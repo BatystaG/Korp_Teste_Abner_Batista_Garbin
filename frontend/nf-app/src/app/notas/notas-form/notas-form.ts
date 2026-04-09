@@ -50,7 +50,6 @@ export class NotasFormComponent implements OnInit {
     this.editando = !!this.data;
 
     this.form = this.fb.group({
-      numero: [this.data?.numero ?? '', Validators.required],
       itens: this.fb.array([])
     });
 
@@ -74,7 +73,7 @@ export class NotasFormComponent implements OnInit {
     return this.form.get('itens') as FormArray;
   }
 
-  adicionarItem(produtoId: number = 0, quantidade: number = 1, precoUnitario: number = 0): void {
+  adicionarItem(produtoId: number | null = null, quantidade: number = 1, precoUnitario: number = 0): void {
     this.itens.push(this.fb.group({
       produtoId:     [produtoId,     Validators.required],
       quantidade:    [quantidade,    [Validators.required, Validators.min(1)]],
@@ -97,7 +96,7 @@ export class NotasFormComponent implements OnInit {
 
     const nota: NotaFiscal = {
       ...this.data,
-      numero: this.form.value.numero,
+      numero: this.data?.numero ?? '',
       status: 'Rascunho',
       itens: this.form.value.itens.map((item: any) => ({
         ...item,

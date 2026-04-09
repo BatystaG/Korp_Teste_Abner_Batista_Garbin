@@ -40,13 +40,19 @@ export class NotaFiscalService {
 
   criar(nota: NotaFiscal): Observable<NotaFiscal> {
     return this.http.post<NotaFiscal>(this.url, nota).pipe(
-      catchError(err => throwError(() => new Error('Erro ao criar nota fiscal.')))
+      catchError(err => {
+        const msg = err.error?.erro ?? err.error?.title ?? err.message ?? 'Erro ao criar nota fiscal.';
+        return throwError(() => new Error(msg));
+      })
     );
   }
 
   atualizar(id: number, nota: NotaFiscal): Observable<void> {
     return this.http.put<void>(`${this.url}/${id}`, nota).pipe(
-      catchError(err => throwError(() => new Error('Erro ao atualizar nota fiscal.')))
+      catchError(err => {
+        const msg = err.error?.erro ?? err.error?.title ?? err.message ?? 'Erro ao atualizar nota fiscal.';
+        return throwError(() => new Error(msg));
+      })
     );
   }
 

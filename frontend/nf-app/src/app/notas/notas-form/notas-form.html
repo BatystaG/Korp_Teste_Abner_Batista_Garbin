@@ -3,13 +3,7 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
 
-    <mat-form-field appearance="outline" class="campo-numero">
-      <mat-label>Número</mat-label>
-      <input matInput formControlName="numero" />
-      <mat-error *ngIf="form.get('numero')?.hasError('required')">
-        Número é obrigatório.
-      </mat-error>
-    </mat-form-field>
+    <p *ngIf="editando" class="numero-nota">Nota nº {{ data?.numero }}</p>
 
     <h3>Produtos</h3>
 

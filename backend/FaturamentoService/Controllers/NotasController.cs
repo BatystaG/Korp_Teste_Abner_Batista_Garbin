@@ -46,6 +46,11 @@ public class NotasController : ControllerBase
         nota.Status = "Rascunho";
         _db.NotasFiscais.Add(nota);
         await _db.SaveChangesAsync();
+
+        // Numeração sequencial gerada após o Id ser atribuído pelo banco
+        nota.Numero = nota.Id.ToString("D5");
+        await _db.SaveChangesAsync();
+
         return CreatedAtAction(nameof(GetById), new { id = nota.Id }, nota);
     }
 
@@ -53,15 +58,22 @@ public class NotasController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, NotaFiscal nota)
     {
-        if (id != nota.Id) return BadRequest();
+        var existing = await _db.NotasFiscais
+            .Include(n => n.Itens)
+            .FirstOrDefaultAsync(n => n.Id == id);
 
-        var existing = await _db.NotasFiscais.FindAsync(id);
         if (existing is null) return NotFound();
         if (existing.Status == "Impressa")
             return BadRequest(new { erro = "Nota já impressa não pode ser alterada." });
 
-        existing.Numero = nota.Numero;
-        existing.DataEmissao = nota.DataEmissao;
+        // Remove itens antigos e substitui pelos novos
+        _db.RemoveRange(existing.Itens);
+        foreach (var item in nota.Itens)
+        {
+            item.Id = 0;
+            item.NotaFiscalId = id;
+        }
+        existing.Itens = nota.Itens;
         await _db.SaveChangesAsync();
         return NoContent();
     }
