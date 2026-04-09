@@ -6,8 +6,8 @@ public class NotaFiscal
     public string Numero { get; set; } = string.Empty;
     public DateTime DataEmissao { get; set; } = DateTime.UtcNow;
 
-    // "Rascunho" = ainda editável | "Impressa" = saldo já debitado, bloqueada
-    public string Status { get; set; } = "Rascunho";
+    // "Aberta" = ainda editável | "Fechada" = saldo já debitado, bloqueada
+    public string Status { get; set; } = "Aberta";
 
     // Navegação: uma NF tem muitos itens
     public List<ItemNota> Itens { get; set; } = new();

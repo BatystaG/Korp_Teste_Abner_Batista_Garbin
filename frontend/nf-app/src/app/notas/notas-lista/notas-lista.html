@@ -26,7 +26,7 @@
     <ng-container matColumnDef="status">
       <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
       <mat-cell *matCellDef="let n">
-        <mat-chip [color]="n.status === 'Impressa' ? 'warn' : 'primary'" highlighted>
+        <mat-chip [color]="n.status === 'Fechada' ? 'warn' : 'primary'" highlighted>
           {{ n.status }}
         </mat-chip>
       </mat-cell>
@@ -43,7 +43,7 @@
 
         <!-- Botão imprimir: mostra spinner enquanto processa -->
         <button mat-icon-button color="accent"
-          [disabled]="n.status !== 'Rascunho' || imprimindo === n.id"
+          [disabled]="n.status !== 'Aberta' || imprimindo === n.id"
           (click)="imprimir(n)"
           title="Imprimir">
           <mat-spinner *ngIf="imprimindo === n.id" diameter="20"></mat-spinner>
@@ -51,14 +51,14 @@
         </button>
 
         <button mat-icon-button color="primary"
-          [disabled]="n.status === 'Impressa'"
+          [disabled]="n.status === 'Fechada'"
           (click)="abrirFormulario(n)"
           title="Editar">
           <mat-icon>edit</mat-icon>
         </button>
 
         <button mat-icon-button color="warn"
-          [disabled]="n.status === 'Impressa'"
+          [disabled]="n.status === 'Fechada'"
           (click)="excluir(n)"
           title="Excluir">
           <mat-icon>delete</mat-icon>

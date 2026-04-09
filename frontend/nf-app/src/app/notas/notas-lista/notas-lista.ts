@@ -76,8 +76,8 @@ export class NotasListaComponent implements OnInit, OnDestroy {
   }
 
   imprimir(nota: NotaFiscal): void {
-    if (nota.status !== 'Rascunho') {
-      this.snackBar.open('Apenas notas com status Rascunho podem ser impressas.', 'Fechar', { duration: 4000 });
+    if (nota.status !== 'Aberta') {
+      this.snackBar.open('Apenas notas com status Aberta podem ser impressas.', 'Fechar', { duration: 4000 });
       return;
     }
     this.imprimindo = nota.id!;

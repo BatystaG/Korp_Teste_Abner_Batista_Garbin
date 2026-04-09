@@ -116,7 +116,7 @@ export class NotasFormComponent implements OnInit {
     const nota: NotaFiscal = {
       ...this.data,
       numero: this.data?.numero ?? '',
-      status: 'Rascunho',
+      status: 'Aberta',
       itens: this.form.value.itens.map((item: any) => ({
         ...item,
         produtoDescricao: this.descricaoProduto(item.produtoId)

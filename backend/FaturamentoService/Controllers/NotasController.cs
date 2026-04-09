@@ -52,7 +52,7 @@ public class NotasController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(NotaFiscal nota)
     {
-        nota.Status = "Rascunho";
+        nota.Status = "Aberta";
         _db.NotasFiscais.Add(nota);
         await _db.SaveChangesAsync();
 
@@ -72,8 +72,8 @@ public class NotasController : ControllerBase
             .FirstOrDefaultAsync(n => n.Id == id);
 
         if (existing is null) return NotFound();
-        if (existing.Status == "Impressa")
-            return BadRequest(new { erro = "Nota já impressa não pode ser alterada." });
+        if (existing.Status == "Fechada")
+            return BadRequest(new { erro = "Nota já fechada não pode ser alterada." });
 
         // Remove itens antigos e substitui pelos novos
         _db.RemoveRange(existing.Itens);
@@ -93,8 +93,8 @@ public class NotasController : ControllerBase
     {
         var nota = await _db.NotasFiscais.Include(n => n.Itens).FirstOrDefaultAsync(n => n.Id == id);
         if (nota is null) return NotFound();
-        if (nota.Status == "Impressa")
-            return BadRequest(new { erro = "Nota já impressa não pode ser excluída." });
+        if (nota.Status == "Fechada")
+            return BadRequest(new { erro = "Nota já fechada não pode ser excluída." });
 
         _db.NotasFiscais.Remove(nota);
         await _db.SaveChangesAsync();
@@ -185,8 +185,8 @@ public class NotasController : ControllerBase
     {
         var nota = await _db.NotasFiscais.Include(n => n.Itens).FirstOrDefaultAsync(n => n.Id == id);
         if (nota is null) return NotFound();
-        if (nota.Status == "Impressa")
-            return BadRequest(new { erro = "Nota já foi impressa." });
+        if (nota.Status == "Fechada")
+            return BadRequest(new { erro = "Nota já foi fechada." });
 
         var debitosSucessos = new List<(int ProdutoId, int Quantidade)>();
 
@@ -217,7 +217,7 @@ public class NotasController : ControllerBase
                 debitosSucessos.Add((item.ProdutoId, item.Quantidade));
             }
 
-            nota.Status = "Impressa";
+            nota.Status = "Fechada";
             await _db.SaveChangesAsync();
             return Ok(nota);
         }

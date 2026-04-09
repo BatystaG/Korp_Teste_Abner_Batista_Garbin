@@ -16,7 +16,7 @@ export interface NotaFiscal {
   id?: number;
   numero: string;
   dataEmissao?: string;
-  status: string; // 'Rascunho' | 'Impressa'
+  status: string; // 'Aberta' | 'Fechada'
   itens: ItemNota[];
 }
 
@@ -75,7 +75,7 @@ export class NotaFiscalService {
     );
   }
 
-  // Chama o endpoint que debita o estoque e marca a nota como Impressa
+  // Chama o endpoint que debita o estoque e marca a nota como Fechada
   imprimir(id: number): Observable<NotaFiscal> {
     return this.http.post<NotaFiscal>(`${this.url}/${id}/imprimir`, {}).pipe(
       catchError(err => throwError(() => new Error(this.extrairMensagemErro(err, 'Erro ao imprimir nota fiscal.'))))
