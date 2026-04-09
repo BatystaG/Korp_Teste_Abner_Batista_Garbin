@@ -185,10 +185,19 @@ public class NotasController : ControllerBase
     {
         var nota = await _db.NotasFiscais.Include(n => n.Itens).FirstOrDefaultAsync(n => n.Id == id);
         if (nota is null) return NotFound();
+
+        // Idempotência: se já foi impressa com sucesso, retorna o resultado anterior
+        if (nota.Status == "Fechada" && !string.IsNullOrEmpty(nota.ImpressaoToken))
+        {
+            _logger.LogInformation("Impressão idempotente para nota {NotaId} - já foi processada anteriormente", nota.Id);
+            return Ok(nota);
+        }
+
         if (nota.Status == "Fechada")
             return BadRequest(new { erro = "Nota já foi fechada." });
 
         var debitosSucessos = new List<(int ProdutoId, int Quantidade)>();
+        var impressaoToken = Guid.NewGuid().ToString();
 
         try
         {
@@ -217,8 +226,12 @@ public class NotasController : ControllerBase
                 debitosSucessos.Add((item.ProdutoId, item.Quantidade));
             }
 
+            // Só marca como fechada e gera token se tudo foi bem-sucedido
             nota.Status = "Fechada";
+            nota.ImpressaoToken = impressaoToken;
             await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Nota {NotaId} impressa com sucesso. Token: {Token}", nota.Id, impressaoToken);
             return Ok(nota);
         }
         catch (Exception ex)

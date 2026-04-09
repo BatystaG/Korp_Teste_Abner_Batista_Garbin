@@ -3,6 +3,7 @@ using System;
 using FaturamentoService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FaturamentoService.Data.Migrations
 {
     [DbContext(typeof(FaturamentoDbContext))]
-    partial class FaturamentoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260409142225_UpdateStatusValues")]
+    partial class UpdateStatusValues
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -63,9 +66,6 @@ namespace FaturamentoService.Data.Migrations
 
                     b.Property<DateTime>("DataEmissao")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ImpressaoToken")
-                        .HasColumnType("text");
 
                     b.Property<string>("Numero")
                         .IsRequired()
