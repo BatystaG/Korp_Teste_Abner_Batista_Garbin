@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject } from '@angular/core';
+import { Component, OnInit, Inject, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -43,6 +43,7 @@ export class NotasFormComponent implements OnInit {
     private produtoService: ProdutoService,
     private snackBar: MatSnackBar,
     private dialogRef: MatDialogRef<NotasFormComponent>,
+    private cdr: ChangeDetectorRef,
     @Inject(MAT_DIALOG_DATA) public data: NotaFiscal | null
   ) {}
 
@@ -56,13 +57,26 @@ export class NotasFormComponent implements OnInit {
     // Carrega lista de produtos disponíveis para o select
     this.produtoService.listar().subscribe({
       next: lista => {
-        this.produtos = lista;
-        // Se estiver editando, popula os itens existentes
+        this.produtos = [...lista];
+
+        // Se algum item da nota referencia produto excluído, mantém um placeholder
         if (this.editando && this.data?.itens) {
-          this.data.itens.forEach(item => this.adicionarItem(item.produtoId, item.quantidade, item.precoUnitario));
+          this.data.itens.forEach(item => {
+            if (!this.produtos.some(p => p.id === item.produtoId)) {
+              this.produtos.push({
+                id: item.produtoId,
+                codigo: `#${item.produtoId}`,
+                descricao: `${item.produtoDescricao} (produto removido)`,
+                saldo: 0
+              });
+            }
+            this.adicionarItem(item.produtoId, item.quantidade, item.precoUnitario);
+          });
         } else {
           this.adicionarItem(); // começa com uma linha em branco
         }
+
+        this.cdr.detectChanges();
       },
       error: err => this.snackBar.open(err.message, 'Fechar', { duration: 4000 })
     });
@@ -89,6 +103,11 @@ export class NotasFormComponent implements OnInit {
   descricaoProduto(produtoId: number): string {
     return this.produtos.find(p => p.id === produtoId)?.descricao ?? '';
   }
+
+  compareProdutos = (a: number | null, b: number | null): boolean => {
+    if (a === null || b === null) return false;
+    return Number(a) === Number(b);
+  };
 
   salvar(): void {
     if (this.form.invalid) return;

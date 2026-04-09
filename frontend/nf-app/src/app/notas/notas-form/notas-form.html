@@ -14,7 +14,7 @@
 
         <mat-form-field appearance="outline" class="campo-produto">
           <mat-label>Produto</mat-label>
-          <mat-select formControlName="produtoId">
+          <mat-select formControlName="produtoId" [compareWith]="compareProdutos">
             <mat-option *ngFor="let p of produtos" [value]="p.id">
               {{ p.codigo }} — {{ p.descricao }} (saldo: {{ p.saldo }})
             </mat-option>
