@@ -4,14 +4,15 @@
   left: 0;
   right: 0;
   z-index: 100;
+  height: 80px !important;
 }
 
 .container {
   display: flex;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 80px);
   width: 100%;
   background: #f5f7fa;
-  margin-top: 64px;
+  margin-top: 80px;
 }
 
 .sidenav {
@@ -37,6 +38,12 @@
 .menu-button {
   display: none;
   margin-right: 8px;
+}
+
+.logo {
+  height: 72px;
+  margin-left: 16px;
+  padding: 4px 0;
 }
 
 @media (max-width: 768px) {
