@@ -91,23 +91,54 @@ public class ProdutosController : ControllerBase
         if (quantidade <= 0)
             return BadRequest(new { erro = "Quantidade deve ser maior que zero." });
 
-        var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null)
+        // Implementa concorrência otimista com retry
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            _logger.LogInformation("Tentativa de debitar produto {ProdutoId} não encontrado.", id);
-            return NotFound(new { erro = "Produto não encontrado." });
+            try
+            {
+                var produto = await _db.Produtos.FindAsync(id);
+                if (produto is null)
+                {
+                    _logger.LogInformation("Tentativa de debitar produto {ProdutoId} não encontrado.", id);
+                    return NotFound(new { erro = "Produto não encontrado." });
+                }
+
+                if (produto.Saldo < quantidade)
+                {
+                    _logger.LogInformation("Saldo insuficiente para produto {ProdutoId}. Saldo atual={Saldo}, solicitado={Quantidade}.", id, produto.Saldo, quantidade);
+                    return BadRequest(new { erro = "Saldo insuficiente." });
+                }
+
+                produto.Saldo -= quantidade;
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Saldo debitado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
+                return Ok(produto);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Conflito de concorrência na tentativa {Attempt} para produto {ProdutoId}.", attempt + 1, id);
+
+                // Se foi a última tentativa, retorna erro
+                if (attempt == maxRetries - 1)
+                {
+                    _logger.LogError("Falha definitiva por concorrência para produto {ProdutoId} após {MaxRetries} tentativas.", id, maxRetries);
+                    return Conflict(new { erro = "Produto está sendo modificado por outra operação. Tente novamente." });
+                }
+
+                // Recarrega o contexto para a próxima tentativa
+                foreach (var entry in _db.ChangeTracker.Entries())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                // Pequena pausa antes de tentar novamente
+                await Task.Delay(100 * (attempt + 1));
+            }
         }
 
-        if (produto.Saldo < quantidade)
-        {
-            _logger.LogInformation("Saldo insuficiente para produto {ProdutoId}. Saldo atual={Saldo}, solicitado={Quantidade}.", id, produto.Saldo, quantidade);
-            return BadRequest(new { erro = "Saldo insuficiente." });
-        }
-
-        produto.Saldo -= quantidade;
-        await _db.SaveChangesAsync();
-        _logger.LogInformation("Saldo debitado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
-        return Ok(produto);
+        // Este código nunca deve ser alcançado, mas é boa prática ter
+        return StatusCode(500, new { erro = "Erro interno do servidor." });
     }
 
     // PATCH /api/produtos/5/creditar?quantidade=10
@@ -118,16 +149,47 @@ public class ProdutosController : ControllerBase
         if (quantidade <= 0)
             return BadRequest(new { erro = "Quantidade deve ser maior que zero." });
 
-        var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null)
+        // Implementa concorrência otimista com retry
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            _logger.LogInformation("Tentativa de creditar produto {ProdutoId} não encontrado.", id);
-            return NotFound(new { erro = "Produto não encontrado." });
+            try
+            {
+                var produto = await _db.Produtos.FindAsync(id);
+                if (produto is null)
+                {
+                    _logger.LogInformation("Tentativa de creditar produto {ProdutoId} não encontrado.", id);
+                    return NotFound(new { erro = "Produto não encontrado." });
+                }
+
+                produto.Saldo += quantidade;
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Saldo creditado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
+                return Ok(produto);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Conflito de concorrência na tentativa {Attempt} para produto {ProdutoId}.", attempt + 1, id);
+
+                // Se foi a última tentativa, retorna erro
+                if (attempt == maxRetries - 1)
+                {
+                    _logger.LogError("Falha definitiva por concorrência para produto {ProdutoId} após {MaxRetries} tentativas.", id, maxRetries);
+                    return Conflict(new { erro = "Produto está sendo modificado por outra operação. Tente novamente." });
+                }
+
+                // Recarrega o contexto para a próxima tentativa
+                foreach (var entry in _db.ChangeTracker.Entries())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                // Pequena pausa antes de tentar novamente
+                await Task.Delay(100 * (attempt + 1));
+            }
         }
 
-        produto.Saldo += quantidade;
-        await _db.SaveChangesAsync();
-        _logger.LogInformation("Saldo creditado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
-        return Ok(produto);
+        // Este código nunca deve ser alcançado, mas é boa prática ter
+        return StatusCode(500, new { erro = "Erro interno do servidor." });
     }
 }

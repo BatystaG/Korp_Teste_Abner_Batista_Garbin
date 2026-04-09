@@ -10,4 +10,12 @@ public class EstoqueDbContext : DbContext
     public EstoqueDbContext(DbContextOptions<EstoqueDbContext> options) : base(options) { }
 
     public DbSet<Produto> Produtos => Set<Produto>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Configura RowVersion como token de concorrência
+        modelBuilder.Entity<Produto>()
+            .Property(p => p.RowVersion)
+            .IsRowVersion();
+    }
 }
