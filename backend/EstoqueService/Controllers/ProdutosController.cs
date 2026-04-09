@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using EstoqueService.Data;
 using EstoqueService.Models;
 
@@ -12,10 +13,12 @@ namespace EstoqueService.Controllers;
 public class ProdutosController : ControllerBase
 {
     private readonly EstoqueDbContext _db;
+    private readonly ILogger<ProdutosController> _logger;
 
-    public ProdutosController(EstoqueDbContext db)
+    public ProdutosController(EstoqueDbContext db, ILogger<ProdutosController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     // GET /api/produtos
@@ -31,7 +34,11 @@ public class ProdutosController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null) return NotFound();
+        if (produto is null)
+        {
+            _logger.LogInformation("Produto {ProdutoId} não encontrado.", id);
+            return NotFound(new { erro = "Produto não encontrado." });
+        }
         return Ok(produto);
     }
 
@@ -49,7 +56,12 @@ public class ProdutosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, Produto produto)
     {
-        if (id != produto.Id) return BadRequest();
+        if (id != produto.Id)
+        {
+            _logger.LogWarning("Produto id informado ({ProvidedId}) difere do id do payload ({PayloadId}).", id, produto.Id);
+            return BadRequest(new { erro = "Id da rota e id do produto devem ser iguais." });
+        }
+
         _db.Entry(produto).State = EntityState.Modified;
         await _db.SaveChangesAsync();
         return NoContent();
@@ -60,7 +72,12 @@ public class ProdutosController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null) return NotFound();
+        if (produto is null)
+        {
+            _logger.LogInformation("Tentativa de excluir produto {ProdutoId} não encontrado.", id);
+            return NotFound(new { erro = "Produto não encontrado." });
+        }
+
         _db.Produtos.Remove(produto);
         await _db.SaveChangesAsync();
         return NoContent();
@@ -71,13 +88,25 @@ public class ProdutosController : ControllerBase
     [HttpPatch("{id}/debitar")]
     public async Task<IActionResult> Debitar(int id, [FromQuery] int quantidade)
     {
+        if (quantidade <= 0)
+            return BadRequest(new { erro = "Quantidade deve ser maior que zero." });
+
         var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null) return NotFound();
+        if (produto is null)
+        {
+            _logger.LogInformation("Tentativa de debitar produto {ProdutoId} não encontrado.", id);
+            return NotFound(new { erro = "Produto não encontrado." });
+        }
+
         if (produto.Saldo < quantidade)
+        {
+            _logger.LogInformation("Saldo insuficiente para produto {ProdutoId}. Saldo atual={Saldo}, solicitado={Quantidade}.", id, produto.Saldo, quantidade);
             return BadRequest(new { erro = "Saldo insuficiente." });
+        }
 
         produto.Saldo -= quantidade;
         await _db.SaveChangesAsync();
+        _logger.LogInformation("Saldo debitado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
         return Ok(produto);
     }
 
@@ -86,11 +115,19 @@ public class ProdutosController : ControllerBase
     [HttpPatch("{id}/creditar")]
     public async Task<IActionResult> Creditar(int id, [FromQuery] int quantidade)
     {
+        if (quantidade <= 0)
+            return BadRequest(new { erro = "Quantidade deve ser maior que zero." });
+
         var produto = await _db.Produtos.FindAsync(id);
-        if (produto is null) return NotFound();
+        if (produto is null)
+        {
+            _logger.LogInformation("Tentativa de creditar produto {ProdutoId} não encontrado.", id);
+            return NotFound(new { erro = "Produto não encontrado." });
+        }
 
         produto.Saldo += quantidade;
         await _db.SaveChangesAsync();
+        _logger.LogInformation("Saldo creditado com sucesso para produto {ProdutoId}. Quantidade={Quantidade}, novo saldo={Saldo}.", id, quantidade, produto.Saldo);
         return Ok(produto);
     }
 }

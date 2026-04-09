@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using FaturamentoService.Data;
 using FaturamentoService.Models;
 
@@ -14,14 +15,20 @@ public class NotasController : ControllerBase
     private readonly FaturamentoDbContext _db;
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _config;
+    private readonly ILogger<NotasController> _logger;
 
     // HttpClient é injetado via IHttpClientFactory — melhor prática para evitar
     // esgotamento de sockets ao reutilizar conexões
-    public NotasController(FaturamentoDbContext db, IHttpClientFactory httpFactory, IConfiguration config)
+    public NotasController(
+        FaturamentoDbContext db,
+        IHttpClientFactory httpFactory,
+        IConfiguration config,
+        ILogger<NotasController> logger)
     {
         _db = db;
         _httpClient = httpFactory.CreateClient("EstoqueService");
         _config = config;
+        _logger = logger;
     }
 
     // GET /api/notas
@@ -94,8 +101,85 @@ public class NotasController : ControllerBase
         return NoContent();
     }
 
-    // POST /api/notas/5/imprimir
-    // Debita o saldo de cada item no EstoqueService e marca a nota como "Impressa"
+    private async Task<HttpResponseMessage> SendPatchWithRetryAsync(string uri, int maxAttempts = 2)
+    {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                var response = await _httpClient.PatchAsync(uri, null);
+                return response;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Falha de comunicação com EstoqueService na tentativa {Attempt} para {Uri}", attempt, uri);
+                if (attempt == maxAttempts)
+                    throw;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "Timeout ao chamar EstoqueService na tentativa {Attempt} para {Uri}", attempt, uri);
+                if (attempt == maxAttempts)
+                    throw;
+            }
+
+            await Task.Delay(200);
+        }
+
+        throw new InvalidOperationException("Tentativa de requisição excedeu o número máximo de tentativas.");
+    }
+
+    private static string ExtractErrorDetail(string content, HttpStatusCode statusCode, int produtoId)
+    {
+        var detalhe = content;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("erro", out var erroProp) && erroProp.ValueKind == JsonValueKind.String)
+                detalhe = erroProp.GetString() ?? detalhe;
+            else if (root.TryGetProperty("detail", out var detailProp) && detailProp.ValueKind == JsonValueKind.String)
+                detalhe = detailProp.GetString() ?? detalhe;
+            else if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == JsonValueKind.String)
+                detalhe = titleProp.GetString() ?? detalhe;
+        }
+        catch
+        {
+            // mantém o conteúdo original se não for JSON válido
+        }
+
+        if (statusCode == HttpStatusCode.NotFound)
+            detalhe = $"Produto {produtoId} não encontrado.";
+
+        return detalhe;
+    }
+
+    private async Task<bool> CompensateDebitAsync(int produtoId, int quantidade)
+    {
+        const int retryCount = 2;
+        for (var attempt = 1; attempt <= retryCount; attempt++)
+        {
+            try
+            {
+                var response = await _httpClient.PatchAsync($"api/produtos/{produtoId}/creditar?quantidade={quantidade}", null);
+                if (response.IsSuccessStatusCode)
+                    return true;
+
+                _logger.LogWarning("Compensação falhou para produto {ProdutoId}: status {StatusCode}", produtoId, response.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Exceção ao tentar compensar débito para produto {ProdutoId} na tentativa {Attempt}", produtoId, attempt);
+            }
+
+            await Task.Delay(200);
+        }
+
+        return false;
+    }
+
     [HttpPost("{id}/imprimir")]
     public async Task<IActionResult> Imprimir(int id)
     {
@@ -104,70 +188,57 @@ public class NotasController : ControllerBase
         if (nota.Status == "Impressa")
             return BadRequest(new { erro = "Nota já foi impressa." });
 
-        // Lista para rastrear débitos bem-sucedidos para compensação em caso de falha
         var debitosSucessos = new List<(int ProdutoId, int Quantidade)>();
 
         try
         {
-            // Chama EstoqueService para debitar cada item
             foreach (var item in nota.Itens)
             {
-                var response = await _httpClient.PatchAsync(
-                    $"api/produtos/{item.ProdutoId}/debitar?quantidade={item.Quantidade}",
-                    null);
+                var uri = $"api/produtos/{item.ProdutoId}/debitar?quantidade={item.Quantidade}";
+                HttpResponseMessage response;
+
+                try
+                {
+                    response = await SendPatchWithRetryAsync(uri);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro irreversível ao comunicar EstoqueService ao debitar produto {ProdutoId}", item.ProdutoId);
+                    return StatusCode(502, new { erro = "Erro de comunicação com o serviço de estoque. Tente novamente em alguns instantes." });
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    var detalhe = errorContent;
-
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(errorContent);
-                        var root = doc.RootElement;
-
-                        if (root.TryGetProperty("erro", out var erroProp) && erroProp.ValueKind == JsonValueKind.String)
-                            detalhe = erroProp.GetString() ?? detalhe;
-                        else if (root.TryGetProperty("detail", out var detailProp) && detailProp.ValueKind == JsonValueKind.String)
-                            detalhe = detailProp.GetString() ?? detalhe;
-                        else if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == JsonValueKind.String)
-                            detalhe = titleProp.GetString() ?? detalhe;
-                    }
-                    catch
-                    {
-                        // Não faz nada, mantém o conteúdo original
-                    }
-
-                    if (response.StatusCode == HttpStatusCode.NotFound)
-                        detalhe = $"Produto {item.ProdutoId} não encontrado.";
-
+                    var detalhe = ExtractErrorDetail(errorContent, response.StatusCode, item.ProdutoId);
                     throw new Exception($"Falha ao debitar produto {item.ProdutoId}: {detalhe}");
                 }
 
-                // Adiciona à lista de débitos bem-sucedidos
                 debitosSucessos.Add((item.ProdutoId, item.Quantidade));
             }
 
-            // Se todos os débitos foram bem-sucedidos, marca a nota como impressa
             nota.Status = "Impressa";
             await _db.SaveChangesAsync();
             return Ok(nota);
         }
         catch (Exception ex)
         {
-            // Em caso de falha, compensa os débitos bem-sucedidos
+            _logger.LogWarning(ex, "Falha ao imprimir nota {NotaId}, tentando compensar débitos", nota.Id);
+            var compensationFailures = new List<int>();
+
             foreach (var (produtoId, quantidade) in debitosSucessos)
             {
-                try
+                var compensated = await CompensateDebitAsync(produtoId, quantidade);
+                if (!compensated)
                 {
-                    await _httpClient.PatchAsync(
-                        $"api/produtos/{produtoId}/creditar?quantidade={quantidade}",
-                        null);
+                    compensationFailures.Add(produtoId);
                 }
-                catch
-                {
-                    // Log de erro de compensação, mas continua tentando os outros
-                }
+            }
+
+            if (compensationFailures.Any())
+            {
+                _logger.LogError("Falha de compensação para produtos {ProdutoIds} na nota {NotaId}", compensationFailures, nota.Id);
+                return StatusCode(500, new { erro = "Erro ao recuperar o estoque após falha. Verifique os logs do sistema." });
             }
 
             return BadRequest(new { erro = ex.Message });
